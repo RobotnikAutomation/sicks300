@@ -2,9 +2,9 @@
  * SICK S300 2 ROS NODE
  *
  * Copyright (c) 2022-2023 Alberto José Tudela Roldán <ajtudela@gmail.com>
- * 
+ *
  * This file is part of sicks300_2 project.
- * 
+ *
  * All rights reserved.
  *
  */
@@ -21,11 +21,11 @@
 
 using namespace std::chrono_literals;
 
-SickS3002::SickS3002(const std::string& name, bool intra_process_comms) : 
+SickS3002::SickS3002(const std::string& name, bool intra_process_comms) :
 					rclcpp_lifecycle::LifecycleNode(name, rclcpp::NodeOptions()
-					.use_intra_process_comms(intra_process_comms)), 
-					synced_ros_time_(this->now()), 
-					synced_time_ready_(false), 
+					.use_intra_process_comms(intra_process_comms)),
+					synced_ros_time_(this->now()),
+					synced_time_ready_(false),
 					synced_sick_stamp_(0){
 }
 
@@ -40,61 +40,61 @@ rclcpp_CallReturn SickS3002::on_configure(const rclcpp_lifecycle::State &){
 	RCLCPP_INFO(this->get_logger(), "Configuring the node...");
 
 	// Declare and read parameters
-	nav2_util::declare_parameter_if_not_declared(this, "port", rclcpp::ParameterValue("/dev/ttyUSB0"), 
+	nav2_util::declare_parameter_if_not_declared(this, "port", rclcpp::ParameterValue("/dev/ttyUSB0"),
 							rcl_interfaces::msg::ParameterDescriptor()
 							.set__description("USB port of the scanner"));
 	this->get_parameter("port", port_);
 	RCLCPP_INFO(this->get_logger(), "The parameter port is set to: %s", port_.c_str());
 
-	nav2_util::declare_parameter_if_not_declared(this, "baud", rclcpp::ParameterValue(500000), 
+	nav2_util::declare_parameter_if_not_declared(this, "baud", rclcpp::ParameterValue(500000),
 							rcl_interfaces::msg::ParameterDescriptor()
 							.set__description("Baudrate to communicate with the laser scanner"));
 	this->get_parameter("baud", baud_);
 	RCLCPP_INFO(this->get_logger(), "The parameter baud is set to: %i", baud_);
 
-	nav2_util::declare_parameter_if_not_declared(this, "scan_id", rclcpp::ParameterValue(7), 
+	nav2_util::declare_parameter_if_not_declared(this, "scan_id", rclcpp::ParameterValue(7),
 							rcl_interfaces::msg::ParameterDescriptor()
 							.set__description("Identifier of the scanner"));
 	this->get_parameter("scan_id", scan_id_);
 	RCLCPP_INFO(this->get_logger(), "The parameter scan_id is set to: %i", scan_id_);
 
-	nav2_util::declare_parameter_if_not_declared(this, "inverted", rclcpp::ParameterValue(false), 
+	nav2_util::declare_parameter_if_not_declared(this, "inverted", rclcpp::ParameterValue(false),
 							rcl_interfaces::msg::ParameterDescriptor()
 							.set__description("Option to invert the direction of the measurements"));
 	this->get_parameter("inverted", inverted_);
 	RCLCPP_INFO(this->get_logger(), "The parameter inverted is set to: %s", inverted_ ? "true" : "false");
 
-	nav2_util::declare_parameter_if_not_declared(this, "scan_topic", rclcpp::ParameterValue("scan"), 
+	nav2_util::declare_parameter_if_not_declared(this, "scan_topic", rclcpp::ParameterValue("scan"),
 							rcl_interfaces::msg::ParameterDescriptor()
 							.set__description("The topic where the laser scan will be published"));
 	this->get_parameter("scan_topic", scan_topic_);
 	RCLCPP_INFO(this->get_logger(), "The parameter scan_topic is set to: %s", scan_topic_.c_str());
 
-	nav2_util::declare_parameter_if_not_declared(this, "frame_id", rclcpp::ParameterValue("base_laser_link"), 
+	nav2_util::declare_parameter_if_not_declared(this, "frame_id", rclcpp::ParameterValue("base_laser_link"),
 							rcl_interfaces::msg::ParameterDescriptor()
 							.set__description("The frame of the scanner"));
 	this->get_parameter("frame_id", frame_id_);
 	RCLCPP_INFO(this->get_logger(), "The parameter frame_id is set to: %s", frame_id_.c_str());
 
-	nav2_util::declare_parameter_if_not_declared(this, "scan_duration", rclcpp::ParameterValue(0.025), 
+	nav2_util::declare_parameter_if_not_declared(this, "scan_duration", rclcpp::ParameterValue(0.025),
 							rcl_interfaces::msg::ParameterDescriptor()
 							.set__description("Time between laser scans"));
 	this->get_parameter("scan_duration", scan_duration_);
 	RCLCPP_INFO(this->get_logger(), "The parameter scan_duration is set to: %f", scan_duration_);
 
-	nav2_util::declare_parameter_if_not_declared(this, "scan_cycle_time", rclcpp::ParameterValue(0.040), 
+	nav2_util::declare_parameter_if_not_declared(this, "scan_cycle_time", rclcpp::ParameterValue(0.040),
 							rcl_interfaces::msg::ParameterDescriptor()
 							.set__description("Cycle time of the scan"));
 	this->get_parameter("scan_cycle_time", scan_cycle_time_);
 	RCLCPP_INFO(this->get_logger(), "The parameter scan_cycle_time is set to: %f", scan_cycle_time_);
 
-	nav2_util::declare_parameter_if_not_declared(this, "debug", rclcpp::ParameterValue(false), 
+	nav2_util::declare_parameter_if_not_declared(this, "debug", rclcpp::ParameterValue(false),
 							rcl_interfaces::msg::ParameterDescriptor()
 							.set__description("Option to toggle scanner debugging information"));
 	this->get_parameter("debug", debug_);
 	RCLCPP_INFO(this->get_logger(), "The parameter debug is set to: %s", debug_ ? "true" : "false");
 
-	nav2_util::declare_parameter_if_not_declared(this, "communication_timeout", rclcpp::ParameterValue(0.2), 
+	nav2_util::declare_parameter_if_not_declared(this, "communication_timeout", rclcpp::ParameterValue(0.2),
 							rcl_interfaces::msg::ParameterDescriptor()
 							.set__description("Timeout to shutdown the node"));
 	this->get_parameter("communication_timeout", communication_timeout_);
@@ -104,19 +104,19 @@ rclcpp_CallReturn SickS3002::on_configure(const rclcpp_lifecycle::State &){
 	// TODO: Change this when ROS will support YAML mixed types
 	ScannerSickS300::ParamType param;
 	param.range_field = 1;
-	nav2_util::declare_parameter_if_not_declared(this, "fields.1.scale", rclcpp::ParameterValue(0.01), 
+	nav2_util::declare_parameter_if_not_declared(this, "fields.1.scale", rclcpp::ParameterValue(0.01),
 							rcl_interfaces::msg::ParameterDescriptor()
 							.set__description("Scale of the field"));
 	this->get_parameter("fields.1.scale", param.dScale);
 	RCLCPP_INFO(this->get_logger(), "The parameter field.1.scale is set to: %f", param.dScale);
 
-	nav2_util::declare_parameter_if_not_declared(this, "fields.1.start_angle", rclcpp::ParameterValue(-135.0 / 180.0 * M_PI), 
+	nav2_util::declare_parameter_if_not_declared(this, "fields.1.start_angle", rclcpp::ParameterValue(-135.0 / 180.0 * M_PI),
 							rcl_interfaces::msg::ParameterDescriptor()
 							.set__description("Start angle of the field"));
 	this->get_parameter("fields.1.start_angle", param.dStartAngle);
 	RCLCPP_INFO(this->get_logger(), "The parameter field.1.start_angle is set to: %f", param.dStartAngle);
 
-	nav2_util::declare_parameter_if_not_declared(this, "fields.1.stop_angle", rclcpp::ParameterValue(135.0 / 180.0 * M_PI), 
+	nav2_util::declare_parameter_if_not_declared(this, "fields.1.stop_angle", rclcpp::ParameterValue(135.0 / 180.0 * M_PI),
 							rcl_interfaces::msg::ParameterDescriptor()
 							.set__description("Stop angle of the field"));
 	this->get_parameter("fields.1.stop_angle", param.dStopAngle);
@@ -137,7 +137,7 @@ rclcpp_CallReturn SickS3002::on_configure(const rclcpp_lifecycle::State &){
 		// Wait for scan to get ready if successful
 		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 		RCLCPP_INFO(this->get_logger(), "...scanner opened successfully on port %s", port_.c_str());
-		
+
 		return rclcpp_CallReturn::SUCCESS;
 	}
 }
@@ -252,7 +252,7 @@ void SickS3002::publishLaserScan(std::vector<double> vdDistM, std::vector<double
 
 		RCLCPP_DEBUG(this->get_logger(), "Time::now() - calculated sick time stamp = %f",(this->now() - laserScan.header.stamp).seconds());
 	}else{
-		laserScan.header.stamp = this->now();
+		laserScan.header.stamp = this->now() - rclcpp::Duration::from_seconds(scan_cycle_time_);
 	}
 
 	// Fill message
@@ -287,6 +287,12 @@ void SickS3002::publishLaserScan(std::vector<double> vdDistM, std::vector<double
 			laserScan.intensities[i] = vdIntensAU[start_scan + i];
 		}
 	}
+
+	// Remove first and last scan point
+	laserScan.ranges.erase(laserScan.ranges.begin());
+	laserScan.ranges.pop_back();
+	laserScan.intensities.erase(laserScan.intensities.begin());
+	laserScan.intensities.pop_back();
 
 	// Publish Laserscan-message
 	laser_scan_pub_->publish(laserScan);
